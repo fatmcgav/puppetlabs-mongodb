@@ -15,21 +15,6 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
       false
     end
 
-  commands :mongo => 'mongo'
-
-  # Optional defaults file
-  def self.mongorc_file
-    if File.file?("#{Facter.value(:root_home)}/.mongorc.js")
-      "load('#{Facter.value(:root_home)}/.mongorc.js');"
-    else 
-      nil
-    end
-  end
-
-  def mongorc_file
-    self.class.mongorc_file
-  end
-
   mk_resource_methods
 
   def initialize(resource={})
@@ -129,17 +114,7 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
     false
   end
 
-  def self.get_mongod_conf_file
-    if File.exists? '/etc/mongod.conf'
-      file = '/etc/mongod.conf'
-    else
-      file = '/etc/mongodb.conf'
-    end
-    file
-  end
-
   def self.get_replset_properties
-
     conn_string = get_conn_string
     output = mongo_command('rs.conf()', conn_string)
     if output['members']
@@ -283,36 +258,16 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
   end
 
   def self.mongo_command(command, host=nil, retries=4)
-    # Allow waiting for mongod to become ready
-    # Wait for 2 seconds initially and double the delay at each retry
-    wait = 2
     begin
-      args = Array.new
-      args << '--quiet'
-      args << ['--host',host] if host
-      if auth_enabled
-        args << ['--eval', "#{mongorc_file} printjson(#{command})"]
-      else
-        args << ['--eval', "printjson(#{command})"]
-      end
-      output = mongo(args.flatten)
+      output = mongo_eval("printjson(#{command})", 'admin', retries, host)
     rescue Puppet::ExecutionFailure => e
-      if e =~ /Error: couldn't connect to server/ and wait <= 2**max_wait
-        info("Waiting #{wait} seconds for mongod to become available")
-        sleep wait
-        wait *= 2
-        retry
-      else
-        raise
-      end
+      Puppet.debug "Got an exception: #{e}"
+      raise
     end
 
     # Dirty hack to remove JavaScript objects
     output.gsub!(/ISODate\((.+?)\)/, '\1 ')
     output.gsub!(/Timestamp\((.+?)\)/, '[\1]')
-    output.gsub!(/ObjectId\(([^)]*)\)/, '\1')
-    output.gsub!(/^Error\:.+/, '')
-
     #Hack to avoid non-json empty sets
     output = "{}" if output == "null\n"
 

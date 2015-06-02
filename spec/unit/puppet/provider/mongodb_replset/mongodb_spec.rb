@@ -76,7 +76,7 @@ EOT
 
     describe 'when the replicaset does not exist' do
       it 'returns false' do
-        allow(provider.class).to receive(:mongo).and_return(<<EOT)
+        allow(provider.class).to receive(:mongo_eval).and_return(<<EOT)
 {
 	"startupStatus" : 3,
 	"info" : "run rs.initiate(...) if not yet done for the set",
@@ -91,7 +91,7 @@ EOT
 
     describe 'when the replicaset exists' do
       it 'returns true' do
-        allow(provider.class).to receive(:mongo).and_return(<<EOT)
+        allow(provider.class).to receive(:mongo_eval).and_return(<<EOT)
 {
 	"_id" : "rs_test",
 	"version" : 1,
@@ -111,7 +111,7 @@ EOT
       allow(provider.class).to receive(:get_mongod_conf_file).and_return(@mongodconffile)
     end
     it 'returns the members of a configured replicaset' do
-      allow(provider.class).to receive(:mongo).and_return(<<EOT)
+      allow(provider.class).to receive(:mongo_eval).and_return(<<EOT)
 {
 	"_id" : "rs_test",
 	"version" : 1,
@@ -143,7 +143,7 @@ EOT
       allow(provider.class).to receive(:get_mongod_conf_file).and_return(@mongodconffile)
     end
     before :each do
-      allow(provider.class).to receive(:mongo).and_return(<<EOT)
+      allow(provider.class).to receive(:mongo_eval).and_return(<<EOT)
 {
 	"setName" : "rs_test",
 	"ismaster" : true,
