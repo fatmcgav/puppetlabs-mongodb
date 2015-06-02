@@ -8,6 +8,7 @@ class mongodb::server (
   $config           = $mongodb::params::config,
   $dbpath           = $mongodb::params::dbpath,
   $pidfilepath      = $mongodb::params::pidfilepath,
+  $rcfile           = $mongodb::params::rcfile,
 
   $service_manage   = $mongodb::params::service_manage,
   $service_provider = $mongodb::params::service_provider,
@@ -31,6 +32,10 @@ class mongodb::server (
   $cpu             = undef,
   $auth            = false,
   $noauth          = undef,
+  $create_admin    = false,
+  $admin_username  = undef,
+  $admin_password  = undef,
+  $store_creds     = $mongodb::params::store_creds,
   $verbose         = undef,
   $verbositylevel  = undef,
   $objcheck        = undef,
@@ -101,5 +106,27 @@ class mongodb::server (
     class { '::mongodb::server::config': }->
     class { '::mongodb::server::install': }->
     anchor { 'mongodb::server::end': }
+  }
+
+  if $create_admin {
+    mongodb_user { $admin_username:
+      ensure        => present,
+      username      => $admin_username,
+      password_hash => mongodb_password($admin_username, $admin_password),
+      database      => 'admin',
+      roles         => ['dbAdmin', 'dbOwner', 'userAdmin', 'userAdminAnyDatabase'],
+      tries         => 10,
+      tag           => 'admin'
+    }
+
+    # Add root permissions if we're setting up replication sets
+    if $replset {
+      Mongodb_user <| title == $admin_username |> {
+        roles => ['root']
+      }
+    }
+
+    # Make sure admin user created first
+    Mongodb_user[$admin_username] -> Mongodb_user <| tag != 'admin' |>
   }
 }

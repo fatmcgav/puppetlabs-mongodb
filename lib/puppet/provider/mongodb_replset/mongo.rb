@@ -17,6 +17,19 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
 
   commands :mongo => 'mongo'
 
+  # Optional defaults file
+  def self.mongorc_file
+    if File.file?("#{Facter.value(:root_home)}/.mongorc.js")
+      "load('#{Facter.value(:root_home)}/.mongorc.js');"
+    else 
+      nil
+    end
+  end
+
+  def mongorc_file
+    self.class.mongorc_file
+  end
+
   mk_resource_methods
 
   def initialize(resource={})
@@ -152,7 +165,7 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
           true
         elsif status.has_key?('info')
           Puppet.debug "Host #{host} is alive but unconfigured: #{status['info']}"
-          true
+          alive.push(host)
         end
       rescue Puppet::ExecutionFailure
         Puppet.warning "Can't connect to replicaset member #{host}."
@@ -228,7 +241,14 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
     self.class.mongo_command(command,host,retries)
   end
 
-  def self.mongo_command(command, host=nil, retries=4)
+  def self.mongo_command(command, host=nil, retries=4, auth_enabled=false)
+    if auth_enabled and command =~ /rs.initiate/
+      # We can't setup replica from any hosts except localhost
+      # if authentication is enabled
+      # User can't be created before replica set initialization
+      # So we can't use user credentials for auth
+      host = '127.0.0.1'
+    end
     # Allow waiting for mongod to become ready
     # Wait for 2 seconds initially and double the delay at each retry
     wait = 2
@@ -236,7 +256,11 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
       args = Array.new
       args << '--quiet'
       args << ['--host',host] if host
-      args << ['--eval',"printjson(#{command})"]
+      if mongorc_file
+        args << ['--eval',mongorc_file + "printjson(#{command})"]
+      else
+        args << ['--eval',"printjson(#{command})"]
+      end
       output = mongo(args.flatten)
     rescue Puppet::ExecutionFailure => e
       if e =~ /Error: couldn't connect to server/ and wait <= 2**max_wait
@@ -257,7 +281,15 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
     #Hack to avoid non-json empty sets
     output = "{}" if output == "null\n"
 
-    JSON.parse(output)
+    Puppet.debug "Command output = #{output.inspect}"
+
+    begin
+      JSON.parse(output)
+    rescue JSON::ParserError => e
+      Puppet.debug "Exception raised when attempting to parse JSON output: #{e}"
+      fixed_output = output.split("\n")[1..-1].join("\n")
+      JSON.parse(fixed_output)
+    end
   end
 
 end
