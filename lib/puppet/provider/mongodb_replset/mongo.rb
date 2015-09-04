@@ -253,13 +253,13 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
   end
 
   def self.mongo_command(command, host=nil, retries=4, auth_enabled=false)
-    # if auth_enabled and command =~ /rs.initiate/
-    #   # We can't setup replica from any hosts except localhost
-    #   # if authentication is enabled
-    #   # User can't be created before replica set initialization
-    #   # So we can't use user credentials for auth
-    #   host = '127.0.0.1'
-    # end
+    if auth_enabled and command =~ /rs.initiate/
+      # We can't setup replica from any hosts except localhost
+      # if authentication is enabled
+      # User can't be created before replica set initialization
+      # So we can't use user credentials for auth
+      host = '127.0.0.1'
+    end
 
     # Allow waiting for mongod to become ready
     # Wait for 2 seconds initially and double the delay at each retry
