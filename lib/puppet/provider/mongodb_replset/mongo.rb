@@ -189,14 +189,14 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
       # Find the alive members so we don't try to add dead members to the replset
       alive_hosts = alive_members(@property_flush[:members])
       dead_hosts  = @property_flush[:members] - alive_hosts
-      raise Puppet::Error, "Can't connect to any member of replicaset #{self.name}." if alive_hosts.empty?
       Puppet.debug "Alive members: #{alive_hosts.inspect}"
       Puppet.debug "Dead members: #{dead_hosts.inspect}" unless dead_hosts.empty?
+      raise Puppet::Error, "Can't connect to any member of replicaset #{self.name}." if alive_hosts.empty?
     else
       alive_hosts = []
     end
 
-    if @property_flush[:ensure] == :present and @property_hash[:ensure] != :present
+    if !master_host(alive_hosts) and @property_flush[:ensure] == :present and @property_hash[:ensure] != :present
       Puppet.debug "Initializing the replset #{self.name}"
 
       # Create a replset configuration
@@ -216,6 +216,7 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
       end
     else
       # Add members to an existing replset
+      Puppet.debug "Adding member to existing replset #{self.name}"
       if master = master_host(alive_hosts)
         current_hosts = db_ismaster(master)['hosts']
         Puppet.debug "Current Hosts are: #{current_hosts.inspect}"

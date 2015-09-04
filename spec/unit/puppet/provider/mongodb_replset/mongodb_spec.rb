@@ -25,6 +25,7 @@ describe Puppet::Type.type(:mongodb_replset).provider(:mongo) do
     it 'should create a replicaset' do
       allow(provider.class).to receive(:get_replset_properties)
       allow(provider).to receive(:alive_members).and_return(valid_members)
+      allow(provider).to receive(:master_host).and_return(false)
       expect(provider).to receive('rs_initiate').with("{ _id: \"rs_test\", members: [ { _id: 0, host: \"mongo1:27017\" },{ _id: 1, host: \"mongo2:27017\" },{ _id: 2, host: \"mongo3:27017\" } ] }", "mongo1:27017").and_return({
         "info" => "Config now saved locally.  Should come online in about a minute.",
         "ok"   => 1,
@@ -36,6 +37,7 @@ describe Puppet::Type.type(:mongodb_replset).provider(:mongo) do
     it 'should create a replicaset with arbiter' do
       allow(provider.class).to receive(:get_replset_properties)
       allow(provider).to receive(:alive_members).and_return(valid_members)
+      allow(provider).to receive(:master_host).and_return(false)
       allow(provider).to receive(:rs_arbiter).and_return('mongo3:27017')
       expect(provider).to receive('rs_initiate').with("{ _id: \"rs_test\", members: [ { _id: 0, host: \"mongo1:27017\" },{ _id: 1, host: \"mongo2:27017\" },{ _id: 2, host: \"mongo3:27017\", arbiterOnly: \"true\" } ] }", "mongo1:27017").and_return({
         "info" => "Config now saved locally.  Should come online in about a minute.",
