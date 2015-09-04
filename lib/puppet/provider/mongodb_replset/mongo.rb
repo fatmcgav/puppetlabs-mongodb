@@ -111,6 +111,10 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
     @resource[:auth_enabled]
   end
 
+  def initialize_host
+    @resource[:initialize_host]
+  end
+
   def master_host(hosts)
     hosts.each do |host|
       status = db_ismaster(host)
@@ -258,7 +262,7 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
       # if authentication is enabled
       # User can't be created before replica set initialization
       # So we can't use user credentials for auth
-      host = '127.0.0.1'
+      host = initialize_host
     end
 
     # Allow waiting for mongod to become ready
