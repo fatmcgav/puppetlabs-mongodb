@@ -253,10 +253,10 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
   end
 
   def mongo_command(command, host, retries=4)
-    self.class.mongo_command(command,host,retries,auth_enabled)
+    self.class.mongo_command(command,host,retries,auth_enabled,initialize_host)
   end
 
-  def self.mongo_command(command, host=nil, retries=4, auth_enabled=false)
+  def self.mongo_command(command, host=nil, retries=4, auth_enabled=false, initialize_host=nil)
     if auth_enabled and command =~ /rs.initiate/
       # We can't setup replica from any hosts except localhost
       # if authentication is enabled
