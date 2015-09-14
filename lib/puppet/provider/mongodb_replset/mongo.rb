@@ -96,7 +96,7 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
   end
 
   def rs_add(host, master)
-    mongo_command("rs.add('#{host})", master)
+    mongo_command("rs.add('#{host}')", master)
   end
 
   def rs_remove(host, master)
@@ -235,15 +235,16 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
       end
 
       # Check that the replicaset has finished initialization
-      retry_count = 10
+      retry_limit = 10
       retry_sleep = 3
-      retry_count.times do |n|
+
+      retry_limit.times do |n|
         begin
           if db_ismaster(alive_hosts[0])['ismaster']
             Puppet.debug 'Replica set initialization has successfully ended'
             return
           else
-            Puppet.debug "Wainting for replica initialization. Retry: #{retry_count}"
+            Puppet.debug "Wainting for replica initialization. Retry: #{n}"
             sleep retry_sleep
             next
           end
@@ -258,6 +259,7 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
         current_hosts = db_ismaster(master)['hosts']
         Puppet.debug "Current Hosts are: #{current_hosts.inspect}"
         newhosts = alive_hosts - current_hosts
+        Puppet.debug "New Hosts are: #{newhosts.inspect}"
         newhosts.each do |host|
           output = {}
           if rs_arbiter == host
@@ -313,7 +315,8 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
     #Hack to avoid non-json empty sets
     output = "{}" if output == "null\n"
 
-    output
+    # Parse the JSON output and return
+    JSON.parse(output)
 
     # Puppet.debug "Command output = #{output.inspect}"
 

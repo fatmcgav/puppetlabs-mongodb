@@ -129,7 +129,7 @@ class mongodb::server (
 
     # Add root permissions if we're setting up replication sets
     if $replset {
-      Mongodb_db <| title == 'admin' |> {
+      Mongodb::Db <| title == 'admin' |> {
         roles => ['root']
       }
     }
