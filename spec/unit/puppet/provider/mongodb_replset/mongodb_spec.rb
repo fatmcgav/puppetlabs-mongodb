@@ -5,7 +5,6 @@
 
 require 'spec_helper'
 require 'tempfile'
-# require 'pry-debugger'
 
 describe Puppet::Type.type(:mongodb_replset).provider(:mongo) do
 
@@ -72,6 +71,7 @@ EOT
       tmp_rc = Tempfile.new('test_rc')
       @mongodb_rc = tmp_rc.path
       allow(provider.class).to receive(:get_mongod_conf_file).and_return(@mongodconffile)
+      # allow(provider.class).to receive(:get_conn_string).and_return('127.0.0.1:27017')
       allow(provider.class).to receive(:mongorc_file).and_return(@mongodb_rc)
     end
 
@@ -85,7 +85,6 @@ EOT
 	"errmsg" : "can't get local.system.replset config from self or any seed (EMPTYCONFIG)"
 }
 EOT
-        # binding.pry
         provider.class.prefetch(resources)
         expect(resource.provider.exists?).to eql false
       end
@@ -100,7 +99,6 @@ EOT
 	"members" : [ ]
 }
 EOT
-        # binding.pry
         provider.class.prefetch(resources)
         expect(resource.provider.exists?).to eql true
       end
@@ -166,7 +164,7 @@ EOT
 
     it 'adds missing members to an existing replicaset' do
       allow(provider.class).to receive(:get_replset_properties)
-      allow(provider).to receive(:rs_status).and_return({ "set" => "rs_test" })
+      allow(provider).to receive(:rs_status).and_return({ 'set' => 'rs_test' })
       expect(provider).to receive('rs_add').twice.and_return({ 'ok' => 1 })
       provider.members=(valid_members)
       provider.flush
