@@ -318,15 +318,6 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
     # Parse the JSON output and return
     JSON.parse(output)
 
-    # Puppet.debug "Command output = #{output.inspect}"
-
-    # begin
-    #   JSON.parse(output)
-    # rescue JSON::ParserError => e
-    #   Puppet.debug "Exception raised when attempting to parse JSON output: #{e}"
-    #   fixed_output = output.split("\n")[1..-1].join("\n")
-    #   JSON.parse(fixed_output)
-    # end
   end
 
 end
