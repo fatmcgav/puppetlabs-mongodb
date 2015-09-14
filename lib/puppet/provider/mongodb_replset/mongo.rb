@@ -80,23 +80,27 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
   private
 
   def db_ismaster(host)
-    mongo_command("db.isMaster()", host)
+    mongo_command('db.isMaster()', host)
   end
 
   def rs_initiate(conf, master)
-    return mongo_command("rs.initiate(#{conf})", master)
+    if auth_enabled
+      return mongo_command("rs.initiate(#{conf})", initialize_host)
+    else
+      return mongo_command("rs.initiate(#{conf})", master)
+    end
   end
 
   def rs_status(host)
-    mongo_command("rs.status()", host)
+    mongo_command('rs.status()', host)
   end
 
   def rs_add(host, master)
-    mongo_command("rs.add(\"#{host}\")", master)
+    mongo_command("rs.add('#{host})", master)
   end
 
   def rs_remove(host, master)
-    mongo_command("rs.remove(\"#{host}\")", master)
+    mongo_command("rs.remove('#{host}')", master)
   end
 
   def rs_arbiter
@@ -104,7 +108,7 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
   end
 
   def rs_add_arbiter(host, master)
-    mongo_command("rs.addArb(\"#{host}\")", master)
+    mongo_command("rs.addArb('#{host}')", master)
   end
 
   def auth_enabled
@@ -186,7 +190,7 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
         Puppet.warning "Can't connect to replicaset member #{host}."
       end
     end
-    return alive
+    alive
   end
 
   def set_members
@@ -210,7 +214,7 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
       alive_hosts = []
     end
 
-    if !master_host(alive_hosts) and @property_flush[:ensure] == :present and @property_hash[:ensure] != :present
+    if @property_flush[:ensure] == :present and @property_hash[:ensure] != :present and !master_host(alive_hosts)
       Puppet.debug "Initializing the replset #{self.name}"
 
       # Create a replset configuration
@@ -228,6 +232,24 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
       if output['ok'] == 0
         raise Puppet::Error, "rs.initiate() failed for replicaset #{self.name}: #{output['errmsg']}"
       end
+
+      # Check that the replicaset has finished initialization
+      retry_count = 10
+      retry_sleep = 3
+      retry_count.times do |n|
+        begin
+          if db_ismaster(alive_hosts[0])['ismaster']
+            Puppet.debug 'Replica set initialization has successfully ended'
+            return
+          else
+            Puppet.debug "Wainting for replica initialization. Retry: #{retry_count}"
+            sleep retry_sleep
+            next
+          end
+        end
+      end
+      raise Puppet::Error, "rs.initiate() failed for replicaset #{self.name}: host #{alive_hosts[0]} didn't become master"
+
     else
       # Add members to an existing replset
       Puppet.debug "Adding member to existing replset #{self.name}"
@@ -253,18 +275,10 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
   end
 
   def mongo_command(command, host, retries=4)
-    self.class.mongo_command(command,host,retries,auth_enabled,initialize_host)
+    self.class.mongo_command(command, host, retries)
   end
 
-  def self.mongo_command(command, host=nil, retries=4, auth_enabled=false, initialize_host=nil)
-    if auth_enabled and command =~ /rs.initiate/
-      # We can't setup replica from any hosts except localhost
-      # if authentication is enabled
-      # User can't be created before replica set initialization
-      # So we can't use user credentials for auth
-      host = initialize_host
-    end
-
+  def self.mongo_command(command, host=nil, retries=4)
     # Allow waiting for mongod to become ready
     # Wait for 2 seconds initially and double the delay at each retry
     wait = 2
@@ -272,10 +286,10 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
       args = Array.new
       args << '--quiet'
       args << ['--host',host] if host
-      if mongorc_file
-        args << ['--eval',mongorc_file + "printjson(#{command})"]
+      if auth_enabled
+        args << ['--eval', "#{mongorc_file} printjson(#{command})"]
       else
-        args << ['--eval',"printjson(#{command})"]
+        args << ['--eval', "printjson(#{command})"]
       end
       output = mongo(args.flatten)
     rescue Puppet::ExecutionFailure => e
@@ -293,19 +307,20 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
     output.gsub!(/ISODate\((.+?)\)/, '\1 ')
     output.gsub!(/Timestamp\((.+?)\)/, '[\1]')
     output.gsub!(/ObjectId\(([^)]*)\)/, '\1')
+    output.gsub!(/^Error\:.+/, '')
 
     #Hack to avoid non-json empty sets
     output = "{}" if output == "null\n"
 
-    Puppet.debug "Command output = #{output.inspect}"
+    # Puppet.debug "Command output = #{output.inspect}"
 
-    begin
-      JSON.parse(output)
-    rescue JSON::ParserError => e
-      Puppet.debug "Exception raised when attempting to parse JSON output: #{e}"
-      fixed_output = output.split("\n")[1..-1].join("\n")
-      JSON.parse(fixed_output)
-    end
+    # begin
+    #   JSON.parse(output)
+    # rescue JSON::ParserError => e
+    #   Puppet.debug "Exception raised when attempting to parse JSON output: #{e}"
+    #   fixed_output = output.split("\n")[1..-1].join("\n")
+    #   JSON.parse(fixed_output)
+    # end
   end
 
 end

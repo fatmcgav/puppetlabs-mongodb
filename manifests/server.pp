@@ -32,10 +32,6 @@ class mongodb::server (
   $cpu             = undef,
   $auth            = false,
   $noauth          = undef,
-  $create_admin    = false,
-  $admin_username  = undef,
-  $admin_password  = undef,
-  $store_creds     = $mongodb::params::store_creds,
   $verbose         = undef,
   $verbositylevel  = undef,
   $objcheck        = undef,
@@ -71,6 +67,17 @@ class mongodb::server (
   $ssl_ca          = undef,
   $restart         = $mongodb::params::restart,
   $storage_engine  = undef,
+
+  $create_admin    = false,
+  $admin_username  = undef,
+  $admin_password  = undef,
+  $store_creds     = $mongodb::params::store_creds,
+  $admin_roles     = ['userAdmin', 'readWrite', 'dbAdmin',
+                      'dbAdminAnyDatabase', 'readAnyDatabase',
+                      'readWriteAnyDatabase', 'userAdminAnyDatabase',
+                      'clusterAdmin', 'clusterManager', 'clusterMonitor',
+                      'hostManager', 'root', 'restore'],
+  $replica_sets   = undef,
 
   # Deprecated parameters
   $master          = undef,
@@ -109,24 +116,45 @@ class mongodb::server (
   }
 
   if $create_admin {
-    mongodb_user { $admin_username:
-      ensure        => present,
-      username      => $admin_username,
-      password_hash => mongodb_password($admin_username, $admin_password),
-      database      => 'admin',
-      roles         => ['dbAdmin', 'dbOwner', 'userAdmin', 'userAdminAnyDatabase'],
-      tries         => 10,
-      tag           => 'admin'
+    validate_string($admin_password)
+
+    mongodb::db { 'admin':
+      user     => $admin_username,
+      password => $admin_password,
+      roles    => $admin_roles
     }
+
+    # Make sure it runs at the correct point
+    Anchor['mongodb::server::end'] -> Mongodb::Db['admin']
 
     # Add root permissions if we're setting up replication sets
     if $replset {
-      Mongodb_user <| title == $admin_username |> {
+      Mongodb_db <| title == 'admin' |> {
         roles => ['root']
       }
     }
 
     # Make sure admin user created first
-    Mongodb_user[$admin_username] -> Mongodb_user <| tag != 'admin' |>
+    # Mongodb_user[$admin_username] -> Mongodb_user <| tag != 'admin' |>
+  }
+
+  # Set-up replicasets
+  if $replset {
+    if $replica_sets {
+      validate_hash($replica_sets)
+
+      # Wrap the replset class
+      class { 'mongodb::replset':
+        sets => $replica_sets
+      }
+      Anchor['mongodb::server::end'] -> Class['mongodb::replset']
+
+      # Need to setup replicaset before admin DB
+      if $create_admin {
+        Class['mongodb::replset'] -> Mongodb::Db['admin']
+      }
+    } else {
+      fail('You must provide replica set members if replica set enabled')
+    }
   }
 }

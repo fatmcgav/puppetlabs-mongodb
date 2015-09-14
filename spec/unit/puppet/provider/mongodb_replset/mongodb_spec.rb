@@ -5,6 +5,7 @@
 
 require 'spec_helper'
 require 'tempfile'
+# require 'pry-debugger'
 
 describe Puppet::Type.type(:mongodb_replset).provider(:mongo) do
 
@@ -22,6 +23,20 @@ describe Puppet::Type.type(:mongodb_replset).provider(:mongo) do
   let(:provider) { described_class.new(resource) }
 
   describe '#create' do
+    before :each do
+      tmp = Tempfile.new('test')
+      @mongodconffile = tmp.path
+      allow(provider.class).to receive(:get_mongod_conf_file).and_return(@mongodconffile)
+      allow(provider.class).to receive(:mongo).and_return(<<EOT)
+{
+        "ismaster" : false,
+        "secondary" : false,
+        "info" : "can't get local.system.replset config from self or any seed (EMPTYCONFIG)",
+        "isreplicaset" : true
+}
+EOT
+    end
+
     it 'should create a replicaset' do
       allow(provider.class).to receive(:get_replset_properties)
       allow(provider).to receive(:alive_members).and_return(valid_members)
@@ -30,6 +45,7 @@ describe Puppet::Type.type(:mongodb_replset).provider(:mongo) do
         "info" => "Config now saved locally.  Should come online in about a minute.",
         "ok"   => 1,
       })
+      allow(provider).to receive(:db_ismaster).and_return('{"ismaster" : true}')
       provider.create
       provider.flush
     end
@@ -43,6 +59,7 @@ describe Puppet::Type.type(:mongodb_replset).provider(:mongo) do
         "info" => "Config now saved locally.  Should come online in about a minute.",
         "ok"   => 1,
       })
+      allow(provider).to receive(:db_ismaster).and_return('{"ismaster" : true}')
       provider.create
       provider.flush
     end
@@ -52,8 +69,12 @@ describe Puppet::Type.type(:mongodb_replset).provider(:mongo) do
     before :each do
       tmp = Tempfile.new('test')
       @mongodconffile = tmp.path
+      tmp_rc = Tempfile.new('test_rc')
+      @mongodb_rc = tmp_rc.path
       allow(provider.class).to receive(:get_mongod_conf_file).and_return(@mongodconffile)
+      allow(provider.class).to receive(:mongorc_file).and_return(@mongodb_rc)
     end
+
     describe 'when the replicaset does not exist' do
       it 'returns false' do
         allow(provider.class).to receive(:mongo).and_return(<<EOT)
@@ -64,6 +85,7 @@ describe Puppet::Type.type(:mongodb_replset).provider(:mongo) do
 	"errmsg" : "can't get local.system.replset config from self or any seed (EMPTYCONFIG)"
 }
 EOT
+        # binding.pry
         provider.class.prefetch(resources)
         expect(resource.provider.exists?).to eql false
       end
@@ -78,6 +100,7 @@ EOT
 	"members" : [ ]
 }
 EOT
+        # binding.pry
         provider.class.prefetch(resources)
         expect(resource.provider.exists?).to eql true
       end
