@@ -112,7 +112,7 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
   end
 
   def auth_enabled
-    @resource[:auth_enabled]
+    self.class.auth_enabled
   end
 
   def initialize_host
