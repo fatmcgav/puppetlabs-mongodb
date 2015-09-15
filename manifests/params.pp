@@ -8,7 +8,9 @@ class mongodb::params inherits mongodb::globals {
   $service_ensure        = pick($mongodb::globals::service_ensure, 'running')
   $service_status        = $mongodb::globals::service_status
   $restart               = true
-  $store_creds           = true
+  $create_admin          = false
+  $admin_username        = 'admin'
+  $store_creds           = false
   $rcfile                = "${::root_home}/.mongorc.js"
 
   $mongos_service_manage = pick($mongodb::globals::mongos_service_manage, true)

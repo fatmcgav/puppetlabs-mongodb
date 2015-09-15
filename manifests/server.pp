@@ -52,6 +52,7 @@ class mongodb::server (
   $mms_name        = undef,
   $mms_interval    = undef,
   $replset         = undef,
+  $replica_sets    = undef,
   $configsvr       = undef,
   $shardsvr        = undef,
   $rest            = undef,
@@ -68,8 +69,8 @@ class mongodb::server (
   $restart         = $mongodb::params::restart,
   $storage_engine  = undef,
 
-  $create_admin    = false,
-  $admin_username  = undef,
+  $create_admin    = $mongodb::params::create_admin,
+  $admin_username  = $mongodb::params::admin_username,
   $admin_password  = undef,
   $store_creds     = $mongodb::params::store_creds,
   $admin_roles     = ['userAdmin', 'readWrite', 'dbAdmin',
@@ -77,7 +78,6 @@ class mongodb::server (
                       'readWriteAnyDatabase', 'userAdminAnyDatabase',
                       'clusterAdmin', 'clusterManager', 'clusterMonitor',
                       'hostManager', 'root', 'restore'],
-  $replica_sets   = undef,
 
   # Deprecated parameters
   $master          = undef,
