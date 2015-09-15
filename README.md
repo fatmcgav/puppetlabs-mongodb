@@ -398,8 +398,13 @@ Use this setting to enable shard server mode for mongod.
 Use this setting to configure replication with replica sets. Specify a replica
 set name as an argument to this set. All hosts must have the same set name.
 
+#####`replset_members`
+An array of member hosts for the replica set.
+Mutually exclusive with `replica_sets` param.
+
 #####`replica_sets`
-Sets of nodes for replica.
+A hash that is used to configure the Replica set.
+Mutually exclusive with `replset_members` param.
 
 ```puppet
 class mongodb::server {

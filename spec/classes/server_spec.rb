@@ -88,4 +88,74 @@ describe 'mongodb::server' do
       end
     end
   end
+
+  context 'when setting up replicasets' do
+    context 'should fail if providing both replica_sets and replset_members' do
+      let(:params) do
+        {
+          :replset          => 'rsTest',
+          :replset_members  => [
+            'mongo1:27017',
+            'mongo2:27017',
+            'mongo3:27017'
+          ],
+          :replica_sets     => {}
+        }
+      end
+
+      it { expect { is_expected.to raise_error(/Puppet::Error: You can provide either replset_members or replica_sets, not both/) } }
+    end
+
+    context 'should setup using replica_sets hash' do
+      let(:rsConf) do
+        {
+          'rsTest' => {
+            'members' => [
+              'mongo1:27017',
+              'mongo2:27017',
+              'mongo3:27017',
+            ],
+            'arbiter' => 'mongo3:27017'
+          }
+        }
+      end
+
+      let(:params) do
+        {
+          :replset      => 'rsTest',
+          :replica_sets => rsConf
+        }
+      end
+
+      it { is_expected.to contain_class('mongodb::replset').with_sets(rsConf) }
+    end
+
+    context 'should setup using replset_members' do
+      let(:rsConf) do
+        {
+          'rsTest' => {
+            'ensure'  => 'present',
+            'members' => [
+              'mongo1:27017',
+              'mongo2:27017',
+              'mongo3:27017'
+            ]
+          }
+        }
+      end
+
+      let(:params) do
+        {
+          :replset         => 'rsTest',
+          :replset_members => [
+            'mongo1:27017',
+            'mongo2:27017',
+            'mongo3:27017'
+          ]
+        }
+      end
+
+      it { is_expected.to contain_class('mongodb::replset').with_sets(rsConf) }
+    end
+  end
 end

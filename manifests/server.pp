@@ -52,6 +52,7 @@ class mongodb::server (
   $mms_name        = undef,
   $mms_interval    = undef,
   $replset         = undef,
+  $replset_members = undef,
   $replica_sets    = undef,
   $configsvr       = undef,
   $shardsvr        = undef,
@@ -130,21 +131,40 @@ class mongodb::server (
 
   # Set-up replicasets
   if $replset {
-    if $replica_sets {
-      validate_hash($replica_sets)
+
+    # Check that we've got either a members array or a replica_sets hash
+    if $replset_members and $replica_sets {
+      fail('You can provide either replset_members or replica_sets, not both.')
+    } else {
+      if $replica_sets {
+        validate_hash($replica_sets)
+
+        # Copy it to REAL value
+        $replica_sets_REAL = $replica_sets
+
+      } else {
+        validate_array($replset_members)
+
+        # Build up a config hash
+        $replica_sets_REAL = {
+          "${replset}" => {
+            'ensure'   => 'present',
+            'members'  => $replset_members
+          }
+        }
+      }
 
       # Wrap the replset class
       class { 'mongodb::replset':
-        sets => $replica_sets
+        sets => $replica_sets_REAL
       }
       Anchor['mongodb::server::end'] -> Class['mongodb::replset']
 
-      # Need to setup replicaset before admin DB
+      # Make sure that the ordering is correct
       if $create_admin {
         Class['mongodb::replset'] -> Mongodb::Db['admin']
       }
-    } else {
-      fail('You must provide replica set members if replica set enabled')
+
     }
   }
 }
