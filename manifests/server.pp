@@ -126,16 +126,6 @@ class mongodb::server (
 
     # Make sure it runs at the correct point
     Anchor['mongodb::server::end'] -> Mongodb::Db['admin']
-
-    # Add root permissions if we're setting up replication sets
-    if $replset {
-      Mongodb::Db <| title == 'admin' |> {
-        roles => ['root']
-      }
-    }
-
-    # Make sure admin user created first
-    # Mongodb_user[$admin_username] -> Mongodb_user <| tag != 'admin' |>
   }
 
   # Set-up replicasets
