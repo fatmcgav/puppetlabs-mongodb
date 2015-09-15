@@ -20,8 +20,7 @@ define mongodb::db (
 
   mongodb_database { $name:
     ensure => present,
-    tries  => $tries,
-    # require => Class['mongodb::server'],
+    tries  => $tries
   }
 
   if $password_hash {

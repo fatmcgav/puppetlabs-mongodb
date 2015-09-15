@@ -71,7 +71,6 @@ EOT
       tmp_rc = Tempfile.new('test_rc')
       @mongodb_rc = tmp_rc.path
       allow(provider.class).to receive(:get_mongod_conf_file).and_return(@mongodconffile)
-      # allow(provider.class).to receive(:get_conn_string).and_return('127.0.0.1:27017')
       allow(provider.class).to receive(:mongorc_file).and_return(@mongodb_rc)
     end
 

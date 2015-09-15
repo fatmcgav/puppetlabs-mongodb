@@ -141,7 +141,6 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
   def self.get_replset_properties
 
     conn_string = get_conn_string
-    # binding.pry
     output = mongo_command('rs.conf()', conn_string)
     if output['members']
       members = output['members'].collect do |val|
@@ -191,7 +190,7 @@ Puppet::Type.type(:mongodb_replset).provide(:mongo, :parent => Puppet::Provider:
         Puppet.warning "Can't connect to replicaset member #{host}."
       end
     end
-    alive
+    return alive
   end
 
   def set_members
