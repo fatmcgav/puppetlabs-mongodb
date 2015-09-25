@@ -106,7 +106,7 @@ Puppet::Type.type(:mongodb_user).provide(:mongodb, :parent => Puppet::Provider::
         mongo_eval("db.dropUser('#{@resource[:username]}')")
       end
     else
-      mongo_eval("db.dropUser('#{@resource[:username]}')")
+      Puppet.warning 'User removal is available only from master host'
     end
   end
 
