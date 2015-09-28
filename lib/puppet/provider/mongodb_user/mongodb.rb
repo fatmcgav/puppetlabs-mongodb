@@ -57,10 +57,6 @@ Puppet::Type.type(:mongodb_user).provide(:mongodb, :parent => Puppet::Provider::
 
   mk_resource_methods
 
-  def db_ismaster
-    self.class.db_ismaster
-  end
-
   def create
     if db_ismaster
       if mongo_24?

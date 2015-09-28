@@ -25,10 +25,6 @@ Puppet::Type.type(:mongodb_database).provide(:mongodb, :parent => Puppet::Provid
     end
   end
 
-  def db_ismaster
-    self.class.db_ismaster
-  end
-
   def create
     if db_ismaster
       mongo_eval('db.dummyData.insert({"created_by_puppet": 1})', @resource[:name])

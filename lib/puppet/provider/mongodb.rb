@@ -88,6 +88,10 @@ class Puppet::Provider::Mongodb < Puppet::Provider
     return res['ismaster']
   end
 
+  def db_ismaster
+    self.class.db_ismaster
+  end
+
   def self.auth_enabled
     auth_enabled = false
     file = get_mongod_conf_file
@@ -99,8 +103,8 @@ class Puppet::Provider::Mongodb < Puppet::Provider
   end
 
   # Mongo Command Wrapper
-  def self.mongo_eval(cmd, db = 'admin')
-    retry_count = 10
+  def self.mongo_eval(cmd, db = 'admin', retries = 10, host = nil)
+    retry_count = retries
     retry_sleep = 3
     if mongorc_file
         cmd = mongorc_file + cmd
@@ -109,9 +113,13 @@ class Puppet::Provider::Mongodb < Puppet::Provider
     out = nil
     retry_count.times do |n|
       begin
-        out = mongo([db, '--quiet', '--host', get_conn_string, '--eval', cmd])
+        if host
+          out = mongo([db, '--quiet', '--host', host, '--eval', cmd])
+        else
+          out = mongo([db, '--quiet', '--host', get_conn_string, '--eval', cmd])
+        end
       rescue => e
-        debug "Request failed: '#{e.message}' Retry: '#{n}'"
+        Puppet.debug "Request failed: '#{e.message}' Retry: '#{n}'"
         sleep retry_sleep
         next
       end
@@ -119,15 +127,16 @@ class Puppet::Provider::Mongodb < Puppet::Provider
     end
 
     if !out
-     fail "Could not evalute MongoDB shell command: #{cmd}"
+      raise Puppet::ExecutionFailure, "Could not evalute MongoDB shell command: #{cmd}"
     end
 
     out.gsub!(/ObjectId\(([^)]*)\)/, '\1')
+    out.gsub!(/^Error\:.+/, '')
     out
   end
 
-  def mongo_eval(cmd, db = 'admin')
-    self.class.mongo_eval(cmd, db)
+  def mongo_eval(cmd, db = 'admin', retries = 10, host = nil)
+    self.class.mongo_eval(cmd, db, host)
   end
 
   # Mongo Version checker
