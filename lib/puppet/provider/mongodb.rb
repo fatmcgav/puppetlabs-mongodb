@@ -136,7 +136,7 @@ class Puppet::Provider::Mongodb < Puppet::Provider
   end
 
   def mongo_eval(cmd, db = 'admin', retries = 10, host = nil)
-    self.class.mongo_eval(cmd, db, host)
+    self.class.mongo_eval(cmd, db, retries, host)
   end
 
   # Mongo Version checker
