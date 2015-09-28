@@ -83,6 +83,7 @@ class Puppet::Provider::Mongodb < Puppet::Provider
     out = mongo(['admin', '--quiet', '--host', get_conn_string, '--eval', cmd_ismaster])
     out.gsub!(/ObjectId\(([^)]*)\)/, '\1')
     out.gsub!(/ISODate\((.+?)\)/, '\1 ')
+    out.gsub!(/^Error\:.+/, '')
     res = JSON.parse out
 
     return res['ismaster']

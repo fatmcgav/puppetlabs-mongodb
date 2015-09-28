@@ -127,6 +127,9 @@ class mongodb::server (
 
     # Make sure it runs at the correct point
     Anchor['mongodb::server::end'] -> Mongodb::Db['admin']
+
+    # Make sure it runs before other DB creation
+    Mongodb::Db['admin'] -> Mongodb::Db <| title != 'admin' |>
   }
 
   # Set-up replicasets
